@@ -1,0 +1,23 @@
+/ {
+    aliases {
+        mybutton1 = &d4;
+        mybutton2 = &d5;
+    };
+
+    gpio_keys {
+        compatible = "gpio-keys";
+
+        d4: gpio4 {
+            gpios = <&gpio0 15 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+        };
+
+        d5: gpio5 {
+            gpios = <&gpio0 2 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+        };
+    };
+
+    wifi {
+        ssid = "ZEPHYR_TEST";
+        psk  = "12345678";
+    };
+};
