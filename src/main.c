@@ -77,55 +77,56 @@ static void wifi_disconnect(void)
     net_mgmt(NET_REQUEST_WIFI_DISCONNECT, iface, NULL, 0);
     printk("Requested Wi-Fi disconnection\n");
 }
+static bool scan_requested;
+
 static void wifi_event_handler(struct net_mgmt_event_callback *cb,
                                uint64_t mgmt_event,
                                struct net_if *iface)
 {
-    if (mgmt_event & NET_EVENT_WIFI_SCAN_RESULT) {
-        const struct wifi_scan_result *res =
-    (const struct wifi_scan_result *)cb->info;
+    if (mgmt_event & NET_EVENT_WIFI_CONNECT_RESULT) {
+        printk("Wi-Fi connected\n");
 
-        printk("SSID: %s | RSSI: %d | CH: %d | SEC: %d\n",
-               res->ssid,
-               res->rssi,
-               res->channel,
-               res->security);
+        if (!scan_requested) {
+            printk("Requesting scan after connect\n");
+            net_mgmt(NET_REQUEST_WIFI_SCAN, iface, NULL, 0);
+            scan_requested = true;
+        }
+    }
+
+    if (mgmt_event & NET_EVENT_WIFI_SCAN_RESULT) {
+        const struct wifi_scan_result *res = cb->info;
+        printk("SSID: %s | RSSI: %d\n", res->ssid, res->rssi);
     }
 
     if (mgmt_event & NET_EVENT_WIFI_SCAN_DONE) {
-        printk("Wi-Fi scan completed\n");
+        printk("Scan done\n");
     }
-
 
     if (mgmt_event & NET_EVENT_IPV4_ADDR_ADD) {
-    if (ipv4_ready()) {
-        printk("IPv4 READY ✅\n");
-        print_ip();
-    } else {
-        printk("IPv4 event (not ready yet)\n");
+        printk("IPv4 address event\n");
     }
 }
 
-}
 
 /* ---------- main ---------- */
 int main(void)
 {
-    net_mgmt_init_event_callback
-    (
-    &wifi_cb,
-    wifi_event_handler,
-    NET_EVENT_WIFI_SCAN_RESULT |
-    NET_EVENT_WIFI_SCAN_DONE 
+    iface = net_if_get_default();
+
+    net_mgmt_init_event_callback(
+        &wifi_cb,
+        wifi_event_handler,
+        NET_EVENT_WIFI_CONNECT_RESULT |
+        NET_EVENT_IPV4_ADDR_ADD |
+        NET_EVENT_WIFI_SCAN_RESULT |
+        NET_EVENT_WIFI_SCAN_DONE
     );
+
     net_mgmt_add_event_callback(&wifi_cb);
 
-    iface = net_if_get_default();
-    net_mgmt(NET_REQUEST_WIFI_SCAN, iface, NULL, 0);
-    k_sleep(K_SECONDS(70));
+    printk("Connecting Wi-Fi\n");
     wifi_connect();
-    k_sleep(K_SECONDS(20));
-    printk("while loop entering\n");
+
     while (1) {
         k_sleep(K_SECONDS(1));
     }
